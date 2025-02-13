@@ -1,10 +1,8 @@
-# Laboratory practice 2.2: KNN classification
 import seaborn as sns
 import matplotlib.pyplot as plt
 sns.set_theme()
-import numpy as np  
+import numpy as np
 import seaborn as sns
-print('hola')
 
 def minkowski_distance(a, b, p=2):
     """
@@ -18,14 +16,10 @@ def minkowski_distance(a, b, p=2):
     Returns:
         float: Minkowski distance between arrays a and b.
     """
-
-    # TODO
-
-
-# k-Nearest Neighbors Model
-
-# - [K-Nearest Neighbours](https://scikit-learn.org/stable/modules/neighbors.html#classification)
-# - [KNeighborsClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html)
+    distancias = 0
+    for i in range(len(a)):
+        distancias += abs(a[i] - b[i]) ** p
+    return distancias ** (1 / p)
 
 
 class knn:
@@ -50,7 +44,16 @@ class knn:
             k (int, optional): Number of neighbors to use. Defaults to 5.
             p (int, optional): The degree of the Minkowski distance. Defaults to 2.
         """
-        # TODO
+        if len(X_train) != len(y_train):
+            raise ValueError('Length of X_train and y_train must be equal.')
+        elif k <= 0 or p <= 0:
+            raise ValueError('k and p must be positive integers.')
+        else:
+            self.k = k
+            self.p = p
+            self.x_train = X_train
+            self.y_train = y_train
+
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -62,7 +65,13 @@ class knn:
         Returns:
             np.ndarray: Predicted class labels.
         """
-        # TODO
+        predicciones = []
+        for punto in X:
+            distancias = self.compute_distances(punto)
+            vecinos_cercanos = self.get_k_nearest_neighbors(distancias)
+            knn_l = self.y_train[vecinos_cercanos]
+            predicciones.append(self.most_common_label(knn_l))
+        return np.array(predicciones)
 
     def predict_proba(self, X):
         """
@@ -77,7 +86,14 @@ class knn:
         Returns:
             np.ndarray: Predicted class probabilities.
         """
-        # TODO
+        probabilidades = []
+        for punto in X:
+            distancias = self.compute_distances(punto)
+            vecinos_cercanos = self.get_k_nearest_neighbors(distancias)
+            knn_l = self.y_train[vecinos_cercanos]
+            prob = np.bincount(knn_l, minlength=len(np.unique(self.y_train))) / self.k
+            probabilidades.append(prob)
+        return np.array(probabilidades)
 
     def compute_distances(self, point: np.ndarray) -> np.ndarray:
         """Compute distance from a point to every point in the training dataset
@@ -88,7 +104,11 @@ class knn:
         Returns:
             np.ndarray: distance from point to each point in the training dataset.
         """
-        # TODO
+        distancias = []
+        for x in self.x_train:
+            distancia = minkowski_distance(point, x, self.p)
+            distancias.append(distancia)
+        return np.array(distancias)
 
     def get_k_nearest_neighbors(self, distances: np.ndarray) -> np.ndarray:
         """Get the k nearest neighbors indices given the distances matrix from a point.
@@ -102,8 +122,12 @@ class knn:
         Hint:
             You might want to check the np.argsort function.
         """
-        # TODO
-
+        indices = np.argsort(distances)
+        vecinos_cercanos = []
+        for i in range(self.k):
+            vecinos_cercanos.append(indices[i])
+        return np.array(vecinos_cercanos)
+    
     def most_common_label(self, knn_labels: np.ndarray) -> int:
         """Obtain the most common label from the labels of the k nearest neighbors
 
@@ -113,84 +137,27 @@ class knn:
         Returns:
             int: most common label
         """
-        # TODO
+        contador = {}
+        for nivel in knn_labels:
+            if nivel in contador:
+                contador[nivel] += 1
+            else:
+                contador[nivel] = 1
+        
+        comun = None
+        maximo = 0
+        for nivel, count in contador.items():
+            if count > maximo:
+                comun = nivel
+                maximo = count
+
+        return comun
 
     def __str__(self):
         """
         String representation of the kNN model.
         """
         return f"kNN model (k={self.k}, p={self.p})"
-
-
-
-def plot_2Dmodel_predictions(X, y, model, grid_points_n):
-    """
-    Plot the classification results and predicted probabilities of a model on a 2D grid.
-
-    This function creates two plots:
-    1. A classification results plot showing True Positives, False Positives, False Negatives, and True Negatives.
-    2. A predicted probabilities plot showing the probability predictions with level curves for each 0.1 increment.
-
-    Args:
-        X (np.ndarray): The input data, a 2D array of shape (n_samples, 2), where each row represents a sample and each column represents a feature.
-        y (np.ndarray): The true labels, a 1D array of length n_samples.
-        model (classifier): A trained classification model with 'predict' and 'predict_proba' methods. The model should be compatible with the input data 'X'.
-        grid_points_n (int): The number of points in the grid along each axis. This determines the resolution of the plots.
-
-    Returns:
-        None: This function does not return any value. It displays two plots.
-
-    Note:
-        - This function assumes binary classification and that the model's 'predict_proba' method returns probabilities for the positive class in the second column.
-    """
-    # Map string labels to numeric
-    unique_labels = np.unique(y)
-    num_to_label = {i: label for i, label in enumerate(unique_labels)}
-
-    # Predict on input data
-    preds = model.predict(X)
-
-    # Determine TP, FP, FN, TN
-    tp = (y == unique_labels[1]) & (preds == unique_labels[1])
-    fp = (y == unique_labels[0]) & (preds == unique_labels[1])
-    fn = (y == unique_labels[1]) & (preds == unique_labels[0])
-    tn = (y == unique_labels[0]) & (preds == unique_labels[0])
-
-    # Plotting
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-
-    # Classification Results Plot
-    ax[0].scatter(X[tp, 0], X[tp, 1], color="green", label=f"True {num_to_label[1]}")
-    ax[0].scatter(X[fp, 0], X[fp, 1], color="red", label=f"False {num_to_label[1]}")
-    ax[0].scatter(X[fn, 0], X[fn, 1], color="blue", label=f"False {num_to_label[0]}")
-    ax[0].scatter(X[tn, 0], X[tn, 1], color="orange", label=f"True {num_to_label[0]}")
-    ax[0].set_title("Classification Results")
-    ax[0].legend()
-
-    # Create a mesh grid
-    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-    xx, yy = np.meshgrid(
-        np.linspace(x_min, x_max, grid_points_n),
-        np.linspace(y_min, y_max, grid_points_n),
-    )
-
-    # # Predict on mesh grid
-    grid = np.c_[xx.ravel(), yy.ravel()]
-    probs = model.predict_proba(grid)[:, 1].reshape(xx.shape)
-
-    # Use Seaborn for the scatter plot
-    sns.scatterplot(x=X[:, 0], y=X[:, 1], hue=y, palette="Set1", ax=ax[1])
-    ax[1].set_title("Classes and Estimated Probability Contour Lines")
-
-    # Plot contour lines for probabilities
-    cnt = ax[1].contour(xx, yy, probs, levels=np.arange(0, 1.1, 0.1), colors="black")
-    ax[1].clabel(cnt, inline=True, fontsize=8)
-
-    # Show the plot
-    plt.tight_layout()
-    plt.show()
-
 
 
 def evaluate_classification_metrics(y_true, y_pred, positive_label):
@@ -213,27 +180,19 @@ def evaluate_classification_metrics(y_true, y_pred, positive_label):
         - Specificity: TN / (TN + FP)
         - F1 Score: 2 * (Precision * Recall) / (Precision + Recall)
     """
-    # Map string labels to 0 or 1
     y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
     y_pred_mapped = np.array([1 if label == positive_label else 0 for label in y_pred])
 
-    # Confusion Matrix
-    # TODO
+    tp = np.sum((y_true_mapped == 1) & (y_pred_mapped == 1))
+    tn = np.sum((y_true_mapped == 0) & (y_pred_mapped == 0))
+    fp = np.sum((y_true_mapped == 0) & (y_pred_mapped == 1))
+    fn = np.sum((y_true_mapped == 1) & (y_pred_mapped == 0))
 
-    # Accuracy
-    # TODO
-
-    # Precision
-    # TODO
-
-    # Recall (Sensitivity)
-    # TODO
-
-    # Specificity
-    # TODO
-
-    # F1 Score
-    # TODO
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+    f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
     return {
         "Confusion Matrix": [tn, fp, fn, tp],
@@ -244,15 +203,15 @@ def evaluate_classification_metrics(y_true, y_pred, positive_label):
         "F1 Score": f1,
     }
 
+import numpy as np
 
+import numpy as np
+
+import numpy as np
 
 def plot_calibration_curve(y_true, y_probs, positive_label, n_bins=10):
     """
     Plot a calibration curve to evaluate the accuracy of predicted probabilities.
-
-    This function creates a plot that compares the mean predicted probabilities
-    in each bin with the fraction of positives (true outcomes) in that bin.
-    This helps assess how well the probabilities are calibrated.
 
     Args:
         y_true (array-like): True labels of the data. Can be binary or categorical.
@@ -269,18 +228,25 @@ def plot_calibration_curve(y_true, y_probs, positive_label, n_bins=10):
             - "true_proportions": Array of the fraction of positives in each bin
 
     """
-    # TODO
+    y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
+    y_probs = np.array(y_probs)
+    bins = np.linspace(0, 1, n_bins + 1)
+    bin_indices = np.digitize(y_probs, bins, right=False) - 1
+    
+    true_proportions = np.zeros(n_bins)
+    bin_centers = (bins[:-1] + bins[1:]) / 2
+    
+    for i in range(n_bins):
+        bin_mask = bin_indices == i
+        if np.any(bin_mask):
+            true_proportions[i] = np.mean(y_true_mapped[bin_mask])
+    
     return {"bin_centers": bin_centers, "true_proportions": true_proportions}
-
 
 
 def plot_probability_histograms(y_true, y_probs, positive_label, n_bins=10):
     """
     Plot probability histograms for the positive and negative classes separately.
-
-    This function creates two histograms showing the distribution of predicted
-    probabilities for each class. This helps in understanding how the model
-    differentiates between the classes.
 
     Args:
         y_true (array-like): True labels of the data. Can be binary or categorical.
@@ -299,22 +265,64 @@ def plot_probability_histograms(y_true, y_probs, positive_label, n_bins=10):
                 Array of predicted probabilities for the negative class.
 
     """
-    # TODO
+    y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
+
+    positive_probs = y_probs[y_true_mapped == 1]
+    negative_probs = y_probs[y_true_mapped == 0]
+
+    plt.hist(positive_probs, bins=n_bins, alpha=0.5, label="Positive Class")
+    plt.hist(negative_probs, bins=n_bins, alpha=0.5, label="Negative Class")
+    plt.legend()
+    plt.title("Probability Histograms")
+    plt.xlabel("Predicted Probability")
+    plt.ylabel("Frequency")
+    plt.show()
 
     return {
-        "array_passed_to_histogram_of_positive_class": y_probs[y_true_mapped == 1],
-        "array_passed_to_histogram_of_negative_class": y_probs[y_true_mapped == 0],
+        "array_passed_to_histogram_of_positive_class": positive_probs,
+        "array_passed_to_histogram_of_negative_class": negative_probs,
     }
 
+import numpy as np
+import matplotlib.pyplot as plt
 
+def plot_calibration_curve(y_true, y_probs, positive_label, n_bins=10):
+    """
+    Plot a calibration curve to evaluate the accuracy of predicted probabilities.
+
+    Args:
+        y_true (array-like): True labels of the data. Can be binary or categorical.
+        y_probs (array-like): Predicted probabilities for the positive class (positive_label).
+                            Expected values are in the range [0, 1].
+        positive_label (int or str): The label that is considered the positive class.
+                                    This is used to map categorical labels to binary outcomes.
+        n_bins (int, optional): Number of bins to use for grouping predicted probabilities.
+                                Defaults to 10. Bins are equally spaced in the range [0, 1].
+
+    Returns:
+        dict: A dictionary with the following keys:
+            - "bin_centers": Array of the center values of each bin.
+            - "true_proportions": Array of the fraction of positives in each bin
+
+    """
+    y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
+    y_probs = np.array(y_probs)
+    bins = np.linspace(0, 1, n_bins + 1)
+    bin_indices = np.digitize(y_probs, bins, right=False) - 1
+    
+    true_proportions = np.zeros(n_bins)
+    bin_centers = (bins[:-1] + bins[1:]) / 2
+    
+    for i in range(n_bins):
+        bin_mask = bin_indices == i
+        if np.any(bin_mask):
+            true_proportions[i] = np.mean(y_true_mapped[bin_mask])
+    
+    return {"bin_centers": bin_centers, "true_proportions": true_proportions}
 
 def plot_roc_curve(y_true, y_probs, positive_label):
     """
     Plot the Receiver Operating Characteristic (ROC) curve.
-
-    The ROC curve is a graphical representation of the diagnostic ability of a binary
-    classifier system as its discrimination threshold is varied. It plots the True Positive
-    Rate (TPR) against the False Positive Rate (FPR) at various threshold settings.
 
     Args:
         y_true (array-like): True labels of the data. Can be binary or categorical.
@@ -327,7 +335,29 @@ def plot_roc_curve(y_true, y_probs, positive_label):
         dict: A dictionary containing the following:
             - "fpr": Array of False Positive Rates for each threshold.
             - "tpr": Array of True Positive Rates for each threshold.
-
     """
-    # TODO
+    y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
+    y_probs = np.array(y_probs)
+    thresholds = np.linspace(0, 1, 11)
+    tpr = []
+    fpr = []
+
+    for threshold in thresholds:
+        y_pred = (y_probs >= threshold).astype(int)
+        tp = np.sum((y_true_mapped == 1) & (y_pred == 1))
+        tn = np.sum((y_true_mapped == 0) & (y_pred == 0))
+        fp = np.sum((y_true_mapped == 0) & (y_pred == 1))
+        fn = np.sum((y_true_mapped == 1) & (y_pred == 0))
+
+        tpr.append(tp / (tp + fn) if (tp + fn) > 0 else 0)
+        fpr.append(fp / (fp + tn) if (fp + tn) > 0 else 0)
+
+    plt.plot(fpr, tpr, label="ROC Curve")
+    plt.plot([0, 1], [0, 1], linestyle="--", color="gray")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.legend()
+    plt.show()
+
     return {"fpr": np.array(fpr), "tpr": np.array(tpr)}
